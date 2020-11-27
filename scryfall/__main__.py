@@ -6,7 +6,7 @@ import asyncio
 import seabird
 import aiohttp
 import re
-#import scryfall
+import scryfall
 from dotenv import load_dotenv
 
 
@@ -36,15 +36,42 @@ async def reply_to(client, event, text):
 		channel_id=event.source.channel_id,
 		text=f"{event.source.user.display_name}: {text}",
 	)
+	
+	
+async def handle_card_command(client, command):
+	print(command.command)
 
+	card_text =""
+
+	if command.arg != "":
+		await reply_to(client, command, "Cracking a fetch for your card")
+		card_text = await scryfall.fetch_card(command.arg)
+	else:
+		await reply_to(client, command,  "Cascading into a random card")
+		card_text = await scryfall.random_card()
+
+	await reply_to(client, command, card_text)
+		
 
 async def handle_card_fetch(client, message):
-	cards = card_pattern.findall(message.text)
-	print(cards)
+	card_names = card_pattern.findall(message.text)
+	print(card_names)
 
-	if len(cards) > 0:
-		await reply_to(client, message, "Executing your search")
+	if len(card_names) > 0:
+		await reply_to(client, message, "Tutoring your card(s)")
 
+		'''
+		other_thing = await asyncio.gather((await scryfall.fetch_card(name)) 
+			for name in card_names)
+
+		for thing in other_thing:
+			await reply_to(client, message, thing)
+
+		'''
+		for name in card_names:
+			card = await scryfall.fetch_card(name)
+			await reply_to(client, message, card)
+		
 
 async def main():
 
@@ -70,7 +97,7 @@ async def main():
 
 			try:
 				if command.command == "card":
-					pass
+					await handle_card_command(client, command)
 				if command.command in ("cards", "search"):
 					pass
 				else:
