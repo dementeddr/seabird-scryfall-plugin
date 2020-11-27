@@ -36,7 +36,12 @@ async def reply_to(client, event, text):
 		channel_id=event.source.channel_id,
 		text=f"{event.source.user.display_name}: {text}",
 	)
-	
+
+
+async def fetch_and_reply(client, message, name):
+	card = await scryfall.fetch_card(name)
+	await reply_to(client, message, card)
+
 	
 async def handle_card_command(client, command):
 	print(command.command)
@@ -60,18 +65,37 @@ async def handle_card_fetch(client, message):
 	if len(card_names) > 0:
 		await reply_to(client, message, "Tutoring your card(s)")
 
-		'''
-		other_thing = await asyncio.gather((await scryfall.fetch_card(name)) 
-			for name in card_names)
-
-		for thing in other_thing:
-			await reply_to(client, message, thing)
-
-		'''
 		for name in card_names:
-			card = await scryfall.fetch_card(name)
-			await reply_to(client, message, card)
-		
+			asyncio.create_task(fetch_and_reply(client, message, name))
+
+
+async def process_event(client, event):
+
+	command = event.command
+	message = event.message
+
+	if message.source.user.display_name == "seabird":
+		return
+
+	if command.command != "":
+		print(f"{command.source.channel_id} $ {command.source.user.display_name}: {command.command} {command.arg}")
+	elif message.text != "":
+		print(f"{message.source.channel_id} {message.source.user.display_name}: {message.text}")
+
+	try:
+		if command.command == "card":
+			await handle_card_command(client, command)
+		if command.command in ("cards", "search"):
+			pass
+		else:
+			await handle_card_fetch(client, message)
+
+	except Exception as ex:
+		print("Shit's on fire yo")
+		print("-"*60)
+		traceback.print_exc()
+		print("-"*60)
+
 
 async def main():
 
@@ -83,31 +107,8 @@ async def main():
 		print("Connected to Seabird Core")
 
 		async for event in client.stream_events(commands=command_list):
+			asyncio.create_task(process_event(client, event))
 
-			command = event.command
-			message = event.message
-
-			if message.source.user.display_name == "seabird":
-				continue
-
-			if command.command != "":
-				print(f"{command.source.channel_id} $ {command.source.user.display_name}: {command.command} {command.arg}")
-			elif message.text != "":
-				print(f"{message.source.channel_id} {message.source.user.display_name}: {message.text}")
-
-			try:
-				if command.command == "card":
-					await handle_card_command(client, command)
-				if command.command in ("cards", "search"):
-					pass
-				else:
-					await handle_card_fetch(client, message)
-
-			except Exception as ex:
-				print("Shit's on fire yo")
-				print("-"*60)
-				traceback.print_exc()
-				print("-"*60)
 
 
 if __name__ == "__main__":

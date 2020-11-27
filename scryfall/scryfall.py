@@ -36,7 +36,16 @@ async def fetch_card(card_name):
 	if isinstance(card, str):
 		return card
 
-	return f"{card['name']}\n{card['image_uris']['normal']}"
+
+	if "card_faces" in card:
+		faces = card['card_faces']
+		 
+		ret = f"{faces[0]['name']}" \
+			"{faces[0]['image_uris']['normal']}" \
+			"{faces[1]['name']}" \
+			"{faces[1]['image_uris']['normal']}"
+	else:
+		return f"{card['name']}\n{card['image_uris']['normal']}"
 
 
 async def card_search():
