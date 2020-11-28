@@ -28,7 +28,7 @@ command_list={
 	)
 }
 
-card_pattern = re.compile(r"\[\[([\w '!?\",.|()#$&]+)\]\]")
+card_pattern = re.compile(r"\[\[([\w '!?\",.|()#$&\\]+)\]\]")
 
 
 async def reply_to(client, event, text):
@@ -95,6 +95,8 @@ async def process_event(client, event):
 		print("-"*60)
 		traceback.print_exc()
 		print("-"*60)
+
+		await reply_to(client, event, f"ERROR: {ex}")
 
 
 async def main():
