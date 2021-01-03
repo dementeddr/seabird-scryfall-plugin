@@ -7,6 +7,7 @@ import seabird
 import aiohttp
 import re
 import scryfall
+import logging as log
 from dotenv import load_dotenv
 
 
@@ -31,6 +32,7 @@ command_list={
 card_pattern = re.compile(r"\[\[([\w '!?\",.|()#$&\\]+)\]\]")
 
 
+
 async def reply_to(client, event, text):
 	await client.send_message(
 		channel_id=event.source.channel_id,
@@ -38,13 +40,16 @@ async def reply_to(client, event, text):
 	)
 
 
+
 async def fetch_and_reply(client, message, name):
 	card = await scryfall.fetch_card(name)
 	await reply_to(client, message, card)
 
-	
+
+
 async def handle_card_command(client, command):
-	print(command.command)
+	
+	log.info(f"{command.command} {command.arg}")
 
 	card_text =""
 
@@ -58,15 +63,20 @@ async def handle_card_command(client, command):
 	await reply_to(client, command, card_text)
 		
 
+
 async def handle_card_fetch(client, message):
+	
 	card_names = card_pattern.findall(message.text)
-	print(card_names)
+	
+	if len(card_names) > 0:
+		log.info(card_names)
 
 	if len(card_names) > 0:
 		await reply_to(client, message, "Tutoring your card(s)")
 
 		for name in card_names:
 			asyncio.create_task(fetch_and_reply(client, message, name))
+
 
 
 async def process_event(client, event):
@@ -78,9 +88,11 @@ async def process_event(client, event):
 		return
 
 	if command.command != "":
-		print(f"{command.source.channel_id} $ {command.source.user.display_name}: {command.command} {command.arg}")
+		log.info(f"{command.source.channel_id:<40} $ {command.source.user.display_name:<14}: {command.command} {command.arg}")
 	elif message.text != "":
-		print(f"{message.source.channel_id} {message.source.user.display_name}: {message.text}")
+		log.info(f"{message.source.channel_id:<40} - {message.source.user.display_name:<14}: {message.text}")
+	else:
+		return
 
 	try:
 		if command.command == "card":
@@ -95,18 +107,23 @@ async def process_event(client, event):
 		print("-"*60)
 		traceback.print_exc()
 		print("-"*60)
+		log.error(ex)
 
 		await reply_to(client, event, f"ERROR: {ex}")
 
 
-async def main():
+
+async def main(host="SEABIRD_HOST", token="SEABIRD_TOKEN_PROD"):
+	
+	log.info(host)
+	log.info(token)
 
 	async with seabird.Client(
-		os.getenv("SEABIRD_HOST_DEV", "https://seabird-core.elwert.cloud"),
-		os.getenv("SEABIRD_TOKEN"),
+		os.getenv(host),
+		os.getenv(token),
 	) as client:
 
-		print("Connected to Seabird Core")
+		log.info("Connected to Seabird Core")
 
 		async for event in client.stream_events(commands=command_list):
 			asyncio.create_task(process_event(client, event))
@@ -115,4 +132,15 @@ async def main():
 
 if __name__ == "__main__":
 	load_dotenv()
-	asyncio.run(main())
+
+	host = "SEABIRD_HOST"
+	token = "SEABIRD_TOKEN_PROD"
+
+	#log.basicConfig(filename="/var/log/seabird/scryfall.log")
+	log.basicConfig(format="%(asctime)s %(levelname)s: %(message)s", level=log.INFO)
+
+	if len(sys.argv) > 1 and sys.argv[1] == 'dev':
+		host = "SEABIRD_HOST_DEV"
+		token = "SEABIRD_TOKEN_DEV"
+	
+	asyncio.run(main(host, token))

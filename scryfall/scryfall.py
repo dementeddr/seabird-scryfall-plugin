@@ -28,6 +28,24 @@ async def api_call(path, prms):
 
 
 
+async def format_oracle_text(card):
+	
+	c_ind = f"({''.join(card['color_indicator'])}) " if 'color_indicator' in card else ""
+	pretty_oracle = card['oracle_text'].replace('(', '_(').replace(')', ')_')
+
+	ret = [
+		f"**{card['name']}**   {card['mana_cost']}",
+		f"{c_ind} {card['type_line']}",
+		pretty_oracle,
+	]
+
+	if "power" in card:
+		ret.append(f"{card['power']} / {card['toughness']}")
+
+	return '\n'.join(ret)
+
+
+
 async def random_card():
 	
 	card = await api_call(f"cards/random", None) 
@@ -35,7 +53,7 @@ async def random_card():
 	if isinstance(card, str):
 		return card
 
-	return f"{card['name']}\n{card['image_uris']['normal']}"
+	return f"**{card['name']}**\n{card['image_uris']['normal']}"
 
 
 
@@ -64,24 +82,17 @@ async def fetch_card_oracle(card_name):
 
 	if isinstance(card, str):
 		return card
+	
+	ret = "\n>>> "
 
 	if "card_faces" in card:
-		ret = "not yet implemented for DFCs"
+		ret += await format_oracle_text(card["card_faces"][0])
+		ret += '\n'
+		ret += await format_oracle_text(card["card_faces"][1])
 	else:
+		ret = "\n>>> " + await format_oracle_text(card)
 
-		c_ind = f"({''.join(card['color_indicator'])}) " if 'color_indicator' in card else ""
-		pretty_oracle = card['oracle_text'].replace('(', '_(').replace(')', ')_')
-
-		ret = [
-			f"\n>>> **{card['name']}**   {card['mana_cost']}",
-			f"{c_ind}{card['type_line']}   [{card['rarity'][0].title()}]",
-			pretty_oracle,
-		]
-
-		if "power" in card:
-			ret.append(f"{card['power']} / {card['toughness']}")
-
-	return '\n'.join(ret)
+	return ret
 
 
 
@@ -92,19 +103,18 @@ async def fetch_card_image(card_name):
 	if isinstance(card, str):
 		return card
 
-	if "card_faces" in card:
+	if card["layout"] in ("normal", "transform"):
+		return f"**{card['name']}**\n{card['image_uris']['normal']}"
+	
+	else:
 		faces = card['card_faces']
-		 
 		ret = [
 			f"**{faces[0]['name']}**",
 			f"{faces[0]['image_uris']['normal']}",
 			f"**{faces[1]['name']}**",
 			f"{faces[1]['image_uris']['normal']}",
 		]
-
 		return '\n'.join(ret)
-	else:
-		return f"**{card['name']}**\n{card['image_uris']['normal']}"
 
 
 
